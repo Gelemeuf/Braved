@@ -104,27 +104,27 @@ if (__name__ == "__main__"):
         sys.exit()
 
     # Connect to robot
-    # answer = input("Choose the selected connection methode : ")
-    # try:
-        # if (answer == "wifi"):
-            # robot = NiryoRobot(robotAddress_WiFi)
-        # elif (answer == "ethernet"):
-            # robot = NiryoRobot(robotAddress_Ethernet)
-        # else:
-            # robot = NiryoRobot(input("Enter robot's IP address : "))
-    # except:
-        # if interprogramComm != None:
-            # print(">>> Closing connection to data traitment program\n")
-            # interprogramComm.close()
-        # print("#######################################")
-        # print("#        Robot control stopped        #")
-        # print("#######################################")
-        # sys.exit()
+    answer = input("Choose the selected connection methode : ")
+    try:
+        if (answer == "wifi"):
+            robot = NiryoRobot(robotAddress_WiFi)
+        elif (answer == "ethernet"):
+            robot = NiryoRobot(robotAddress_Ethernet)
+        else:
+            robot = NiryoRobot(input("Enter robot's IP address : "))
+    except:
+        if interprogramComm != None:
+            print(">>> Closing connection to data traitment program\n")
+            interprogramComm.close()
+        print("#######################################")
+        print("#        Robot control stopped        #")
+        print("#######################################")
+        sys.exit()
     
-    # robot.calibrate_auto()
-    # robot.move_to_home_pose()
-    # robot.set_arm_max_velocity = 100
-    # robot.set_jog_control(enabled=True)
+    robot.calibrate_auto()
+    robot.move_to_home_pose()
+    robot.set_arm_max_velocity = 100
+    robot.set_jog_control(enabled=True)
 
     # Defining  all joints
     joint1 = Joint("shoulderRotation", 1, 0, [-2.6, 2.6, 0.2], [0.06, 0.0002, 0, [0,0]])
@@ -146,8 +146,8 @@ if (__name__ == "__main__"):
     
     while (True):
         # Sending robot position to the data traitment program
-        # msgRobot = prepareDatas("Robot", robot.get_joints())
-        msgRobot = prepareDatas("Robot", [0., 0., 0., 0., 0., 0., 0.])
+        msgRobot = prepareDatas("Robot", robot.get_joints())
+        # msgRobot = prepareDatas("Robot", [0., 0., 0., 0., 0., 0., 0.])    # Used to test when robot is unavailable
         try:
             interprogramComm.send(bytes(msgRobot, "utf-8"))
         except:
@@ -165,20 +165,22 @@ if (__name__ == "__main__"):
         except:
             print(">>> Error while receiving the command")
             break
-
+        
+        # Make command secure
         cmd = securiseCommand(robotsJoints, cmd)
+        
+        # Getting robot joints angles
+        values = robot.get_joints()
 
-        # values = robot.get_joints()
+        t_next = time.time()
+        dt = t_next - t
 
-        # t_next = time.time()
-        # dt = t_next - t
+        for i in range(6):
+            move[i] = robotsJoints[i].PID.calcul(cmd[i], values[i], dt)
 
-        # for i in range(6):
-            # move[i] = robotsJoints[i].PID.calcul(cmd[i], values[i], dt)
+        robot.jog_joints(move)
 
-        # robot.jog_joints(move)
-
-        # t = t_next
+        t = t_next
 
     if interprogramComm != None:
         print(">>> Closing connection to data traitment program\n")
